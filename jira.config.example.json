@@ -1,0 +1,11 @@
+{
+  "baseUrl": "https://jira.example.com",
+  "personalKey": "YOUR_PERSONAL_ACCESS_TOKEN",
+  "authType": "bearer",
+  "email": "",
+  "apiVersion": "2",
+  "defaultProject": "PROJ",
+  "defaultBoardId": null,
+  "sanitizeWindows1252": true,
+  "dryRun": false
+}

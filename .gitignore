@@ -1,0 +1,6 @@
+# Never commit local Jira credentials
+jira.config.json
+.jira.config.json
+*.jira.local.json
+.jira.env
+node_modules/

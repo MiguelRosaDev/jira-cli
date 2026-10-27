@@ -1,0 +1,38 @@
+{
+  "name": "jira-cli",
+  "version": "1.0.0",
+  "description": "Zero-dependency CLI & SDK to interact with Jira REST & Agile APIs (Boards, Sprints, Epics, User Stories, Workflow Transitions & Comments)",
+  "type": "module",
+  "bin": {
+    "jira": "./jira.mjs",
+    "jira-cli": "./jira.mjs"
+  },
+  "scripts": {
+    "start": "node ./jira.mjs",
+    "help": "node ./jira.mjs help",
+    "whoami": "node ./jira.mjs whoami",
+    "boards": "node ./jira.mjs boards",
+    "my-issues": "node ./jira.mjs my-issues",
+    "standup": "node ./jira.mjs standup"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/MiguelRosaDev/jira-cli.git"
+  },
+  "keywords": [
+    "jira",
+    "jira-cli",
+    "jira-api",
+    "agile",
+    "scrum",
+    "kanban",
+    "atlassian",
+    "developer-tools",
+    "cli"
+  ],
+  "author": "Miguel Rosa",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
