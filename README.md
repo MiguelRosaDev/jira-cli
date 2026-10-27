@@ -4,57 +4,58 @@
 [![Node.js](https://img.shields.io/badge/Node.js-%3E%3D18.0.0-green.svg)](https://nodejs.org/)
 [![Zero Dependencies](https://img.shields.io/badge/Dependencies-0-success.svg)](package.json)
 
-Ferramenta CLI & SDK genérica, agnóstica de tecnologia ou empresa, para interagir diretamente com as APIs REST (`/rest/api/2`) e Agile (`/rest/agile/1.0`) do **Jira** (compatível com **Jira Data Center / Server** e **Jira Cloud**).
+A technology-agnostic, zero-dependency CLI & SDK to interact directly with Jira REST (`/rest/api/2`) and Agile (`/rest/agile/1.0`) APIs. Fully compatible with both **Jira Data Center / Server** and **Jira Cloud**.
 
-- **Zero dependências externas**: Desenvolvida em Node.js ESM nativo com o `fetch` integrado.
-- **Ficheiro de configuração único local**: Toda a configuração e chave pessoal ficam num único ficheiro (`jira.config.json`), protegido pelo `.gitignore` para nunca expor credenciais no Git.
-- **Segurança integrada**: Scanner anti-segredos, transliteração Windows-1252 para Data Center e modo `--dry-run` para pré-visualização de alterações.
-
----
-
-## 🔑 1. Onde Obter a Personal Key
-
-A obtenção da chave depende da versão de Jira que utilizas:
-
-### Opção A: Jira Data Center / Jira Server (Personal Access Token - PAT)
-1. Abre o teu Jira no browser.
-2. No canto superior direito, clica no teu **Avatar / Foto de Perfil** e seleciona **Profile** (*Perfil*).
-3. No menu do teu perfil, clica em **Personal Access Tokens** (*Tokens de Acesso Pessoal*).
-4. Clica no botão **Create token** (*Criar token*).
-5. Atribui um nome (ex: `jira-cli`) e define o prazo de expiração pretendido.
-6. Clica em **Create** e **copia imediatamente o token gerado** (o Jira só o exibe esta vez!).
-
-### Opção B: Jira Cloud (`https://*.atlassian.net` — API Token)
-1. Acede a: [https://id.atlassian.com/manage-profile/security/api-tokens](https://id.atlassian.com/manage-profile/security/api-tokens)
-2. Clica no botão **Create API token**.
-3. Dá uma etiqueta identificativa (ex: `jira-cli`) e clica em **Create**.
-4. **Copia o token gerado**.
+- **Zero External Dependencies**: Built with native Node.js ESM using built-in `fetch` (requires Node.js 18+).
+- **Single Local Configuration File**: All settings and personal keys live in a single file (`jira.config.json`), ignored by `.gitignore` to prevent credential leaks.
+- **Built-in Guardrails**: Secret scanner, automatic Windows-1252 transliteration for Data Center compatibility, and `--dry-run` preview mode.
 
 ---
 
-## ⚙️ 2. Onde Colocar a Chave no Ficheiro de Configuração
+## 🔑 1. How to Obtain Your Personal Key
 
-A ferramenta utiliza **apenas um único ficheiro**:
-📂 `jira.config.json` (na raiz do projeto).
+How to generate your token depends on whether your organization uses **Jira Data Center / Server** or **Jira Cloud**:
 
-### Configuração rápida por comando:
+### Option A: Jira Data Center / Jira Server (Personal Access Token - PAT)
+1. Log in to your Jira instance in the browser.
+2. In the top right corner, click your **Avatar / Profile Picture** and select **Profile**.
+3. In your profile menu, click **Personal Access Tokens**.
+4. Click the **Create token** button.
+5. Provide a name (e.g. `jira-cli`) and choose an expiration duration.
+6. Click **Create** and **copy your generated token immediately** (Jira only displays it once!).
+
+### Option B: Jira Cloud (`https://*.atlassian.net` — API Token)
+1. Go to: [https://id.atlassian.com/manage-profile/security/api-tokens](https://id.atlassian.com/manage-profile/security/api-tokens)
+2. Click the **Create API token** button.
+3. Enter a label (e.g. `jira-cli`) and click **Create**.
+4. **Copy the generated token**.
+
+---
+
+## ⚙️ 2. Where to Put the Key in the Configuration File
+
+The tool uses a **single configuration file**:
+📂 `jira.config.json` (located in the project root).
+
+### Quick setup via CLI command:
 ```bash
-# Para Jira Data Center / Server (PAT):
-./jira.mjs init --url "https://jira.empresa.com" --key "O_TEU_TOKEN_AQUI"
+# For Jira Data Center / Server (PAT):
+./jira.mjs init --url "https://jira.yourcompany.com" --key "YOUR_PERSONAL_ACCESS_TOKEN"
 
-# Para Jira Cloud (API Token + Email):
-./jira.mjs init --url "https://empresa.atlassian.net" --email "teu.email@empresa.com" --key "O_TEU_TOKEN_AQUI"
+# For Jira Cloud (API Token + Email):
+./jira.mjs init --url "https://yourcompany.atlassian.net" --email "your.email@company.com" --key "YOUR_API_TOKEN"
 ```
 
-### Ou copiando o template de exemplo:
+### Or manually by creating `jira.config.json`:
 ```bash
 cp jira.config.example.json jira.config.json
 ```
-E editando os valores em `jira.config.json`:
+
+Edit `jira.config.json`:
 ```json
 {
-  "baseUrl": "https://jira.empresa.com",
-  "personalKey": "COLA_AQUI_A_TUA_PERSONAL_KEY",
+  "baseUrl": "https://jira.yourcompany.com",
+  "personalKey": "PASTE_YOUR_PERSONAL_KEY_HERE",
   "authType": "bearer",
   "email": "",
   "apiVersion": "2",
@@ -65,167 +66,168 @@ E editando os valores em `jira.config.json`:
 }
 ```
 
-* **`baseUrl`**: URL base da instância Jira.
-* **`personalKey`**: O token que geraste no passo anterior.
-* **`authType`**: `"bearer"` para Jira Data Center / Server (PAT), ou `"basic"` para Jira Cloud.
-* **`email`**: O teu email (obrigatório apenas em Jira Cloud com `"authType": "basic"`).
-* **`defaultProject`**: *(Opcional)* Chave de projeto por defeito (ex: `PROJ`) para evitar passar `--project` em todos os comandos.
-* **`dryRun`**: Quando `true`, mostra o payload JSON sem efetuar qualquer escrita no Jira.
+* **`baseUrl`**: Base URL of your Jira instance (e.g. `https://jira.yourcompany.com` or `https://yourcompany.atlassian.net`).
+* **`personalKey`**: The Personal Access Token (PAT) or API Token generated in Step 1.
+* **`authType`**: `"bearer"` for Jira Data Center / Server (PAT), or `"basic"` for Jira Cloud.
+* **`email`**: Your email address (required only for Jira Cloud with `"authType": "basic"`).
+* **`defaultProject`**: *(Optional)* Default project key (e.g. `PROJ`) to avoid typing `--project` on every command.
+* **`dryRun`**: When `true`, logs the HTTP method and JSON payload without sending writes to Jira.
 
-### Testar a ligação:
+### Test your connection:
 ```bash
 ./jira.mjs whoami
 ```
 
 ---
 
-## 📖 3. Guia de Comandos
+## 📖 3. Command Reference
 
-> **Dica:** Podes executar diretamente com `./jira.mjs <comando>` ou criar um atalho global executando `npm link` para poderes usar simplesmente `jira <comando>` a partir de qualquer diretório.
+> **Tip:** You can run commands directly with `./jira.mjs <command>` or run `npm link` to expose `jira` and `jira-cli` globally across your system terminal.
 
-### 1. Ler Boards e Sprints
+### 1. Boards & Sprints
 ```bash
-# Listar boards disponíveis
+# List available boards
 ./jira.mjs boards
 
-# Filtrar boards por projeto ou nome
+# Filter boards by project or name
 ./jira.mjs boards --project PROJ --all
 ./jira.mjs boards --search "Backend"
 
-# Listar sprints de uma board
+# List sprints for a board
 ./jira.mjs sprints <boardId>
 ./jira.mjs sprints <boardId> --state active
 
-# Listar issues/stories de uma board ou sprint
+# List issues/stories on a board or sprint
 ./jira.mjs board-issues <boardId>
 ./jira.mjs sprint-issues <sprintId>
 ```
 
-### 2. Ler e Pesquisar User Stories e Issues
+### 2. Read & Search User Stories / Issues
 ```bash
-# Ver detalhes completos de um card (descrição, critérios, subtarefas, links e comentários)
+# Get complete details of an issue (description, criteria, subtasks, links, and comments)
 ./jira.mjs get PROJ-123
 
-# Listar cards atribuídos a ti que estão abertos
+# List open issues assigned to you
 ./jira.mjs my-issues
 
-# Listar User Stories de um projeto ou épico
+# List User Stories for a project or epic
 ./jira.mjs stories --project PROJ
 ./jira.mjs stories --epic PROJ-10
 
-# Pesquisa flexível com JQL
+# Search using any custom JQL expression
 ./jira.mjs search 'project = "PROJ" AND statusCategory != Done ORDER BY priority DESC'
 ```
 
-### 3. Criar User Stories, Tarefas, Bugs e Épicos
+### 3. Create User Stories, Tasks, Bugs & Epics
 ```bash
-# Criar uma User Story
+# Create a standard User Story
 ./jira.mjs create \
   --project PROJ \
   --type "Story" \
-  --summary "Autenticação OAuth2 com refresh tokens" \
-  --description "Critérios de aceitação:\n- Validar tokens JWT\n- Endpoint /refresh"
+  --summary "OAuth2 Authentication with refresh tokens" \
+  --description "Acceptance Criteria:\n- Validate JWT tokens\n- Expose /refresh endpoint"
 
-# Criar associando a um Épico e a uma Sprint
+# Create and link directly to an Epic and Sprint
 ./jira.mjs create \
   --project PROJ \
   --type "Story" \
-  --summary "Paginação na API de listagem de utilizadores" \
+  --summary "Pagination for user list API" \
   --priority "High" \
   --labels "api,performance" \
   --epic PROJ-10 \
   --sprint 45
 
-# Criar um Épico (descobre automaticamente o custom field 'Epic Name' exigido pelo Jira)
+# Create an Epic (auto-discovers the mandatory "Epic Name" custom field)
 ./jira.mjs create-epic \
   --project PROJ \
-  --summary "Refatoração do Módulo de Autenticação" \
+  --summary "Authentication Module Refactoring" \
   --epic-name "Auth v2" \
-  --description "Iniciativa para modernizar a camada de autenticação."
+  --description "Initiative to modernize the authentication layer."
 ```
 
-### 4. Editar Cards, Atribuir e Workflow
+### 4. Edit Cards, Assign & Workflow Transitions
 ```bash
-# Atualizar resumo, descrição ou prioridade
+# Update summary, description, priority, or labels
 ./jira.mjs update PROJ-123 \
-  --summary "Novo título da história" \
+  --summary "Updated story title" \
   --priority "High" \
   --add-label "backend"
 
-# Atribuir card a ti próprio (--me) ou a outro colega
+# Assign issue to yourself (--me), another user, or unassign
 ./jira.mjs assign PROJ-123 --me
-./jira.mjs assign PROJ-123 outro.utilizador
+./jira.mjs assign PROJ-123 john.doe
+./jira.mjs assign PROJ-123 --unassign
 
-# Associar o card a um Épico ou a uma Sprint
+# Move issue into an Epic or Sprint
 ./jira.mjs move-to-epic PROJ-10 PROJ-123
 ./jira.mjs move-to-sprint 45 PROJ-123
 
-# Ver as transições de workflow válidas a partir do estado atual
+# View valid workflow transitions available from current status
 ./jira.mjs transitions PROJ-123
 
-# Mudar o estado do card
+# Move issue to a new status
 ./jira.mjs transition PROJ-123 "In Progress"
-./jira.mjs transition PROJ-123 "Done" --comment "Implementação concluída e validada."
+./jira.mjs transition PROJ-123 "Done" --comment "Implementation completed and tested."
 ```
 
-### 5. Comentários, Worklogs e Links
+### 5. Comments, Worklogs & Links
 ```bash
-# Listar todos os comentários
+# List all comments on an issue
 ./jira.mjs comments PROJ-123
 
-# Adicionar comentário
-./jira.mjs comment PROJ-123 "Testes de carga executados com sucesso (p99 < 80ms)."
+# Add a comment
+./jira.mjs comment PROJ-123 "Load testing completed successfully (p99 < 80ms)."
 
-# Editar comentário existente
-./jira.mjs edit-comment PROJ-123 <commentId> "Novo texto corrigido."
+# Edit an existing comment
+./jira.mjs edit-comment PROJ-123 <commentId> "Updated comment text."
 
-# Registar tempo despendido (worklog)
-./jira.mjs worklog PROJ-123 "3h 30m" "Desenvolvimento de testes e refatoração"
+# Log work spent
+./jira.mjs worklog PROJ-123 "3h 30m" "Refactoring and unit tests"
 
-# Ligar dois cards entre si
+# Link two cards together
 ./jira.mjs link PROJ-123 PROJ-120 --type "Relates"
 
-# Ver ou associar links remotos (páginas de documentação Confluence, repositórios, etc.)
+# View or attach remote links (Confluence pages, documentation, PRs)
 ./jira.mjs remote-links PROJ-123
-./jira.mjs link-url PROJ-123 "https://wiki.empresa.com/doc/123" "Documentação Técnica da API"
+./jira.mjs link-url PROJ-123 "https://wiki.yourcompany.com/doc/123" "API Architecture Document"
 ```
 
 ---
 
-## 💡 4. Funcionalidades de Produtividade
+## 💡 4. Productivity Features
 
-### 📊 Dashboard da Board / Sprint Ativa (`board-summary`)
-Apresenta no terminal o estado geral da sprint ativa: barra de progresso, quantidade de cards por estado, distribuição de tarefas pela equipa e destaque para cards críticos:
+### 📊 Board & Sprint Health Dashboard (`board-summary`)
+Provides a terminal dashboard of the active sprint or board: progress bar, story breakdown by status category (`To Do`, `In Progress`, `Done`), workload per team member, and flagged critical cards:
 ```bash
 ./jira.mjs board-summary <boardId>
 ```
 
-### 🎙️ Resumo para Daily Standup (`standup`)
-Gera automaticamente o teu sumário diário:
-- Cards fechados recentemente
-- Cards em curso (*In Progress*)
-- Próximos cards em fila (*To Do*)
+### 🎙️ Daily Standup Report (`standup`)
+Generates your daily standup notes in seconds:
+- Completed recently (past $N$ days)
+- In Progress right now
+- Next up in queue (To Do)
 ```bash
 ./jira.mjs standup --days 2
 ```
 
-### 📄 Exportar História para Markdown Técnico (`export-story`)
-Exporta os dados de uma User Story (descrição, critérios, subtarefas, documentação e comentários) para Markdown com Checklist Técnica de Implementação:
+### 📄 Export Story to Technical Markdown Spec (`export-story`)
+Exports all information from a User Story (description, acceptance criteria, subtasks, remote docs, and comments) into a Markdown document with a Definition of Done checklist:
 ```bash
 ./jira.mjs export-story PROJ-123 --output spec.md
 ```
 
-### 🛡️ Proteções Integradas
-* **Modo `--dry-run`**: Permite simular qualquer operação de escrita, mostrando o método HTTP e o payload JSON sem alterar dados no Jira.
-* **Sanitização Windows-1252**: Translitera caracteres especiais (`→` para `->`, `✓` para `(/)`, `✗` para `(x)`) para prevenir problemas de codificação no Jira Data Center.
-* **Scanner Anti-Segredos**: Bloqueia o envio de chaves privadas, certificados ou tokens em descrições e comentários.
-* **Output `--json`**: Qualquer comando aceita `--json` para integração facilitada em scripts e pipelines CI/CD.
+### 🛡️ Built-in Safety Guardrails
+* **`--dry-run` Mode**: Append `--dry-run` to any create, update, or transition command to preview the HTTP method, endpoint, and JSON payload before touching Jira.
+* **Windows-1252 Safe Transliteration**: Automatically transliterates Unicode characters (`→` to `->`, `✓` to `(/)`, `✗` to `(x)`) to avoid corrupting characters into `¿` on Jira Data Center instances.
+* **Secret Scanner**: Prevents accidentally submitting private keys, JWTs, or API tokens inside Jira summaries, descriptions, or comments.
+* **`--json` Flag**: Every command supports `--json` for scripting, CI/CD automation, and AI agent integration.
 
 ---
 
-## 💻 5. Utilização Programática (Node.js SDK)
+## 💻 5. Programmatic SDK Usage (Node.js)
 
-Também podes importar `JiraClient` em qualquer aplicação ou script Node.js:
+You can also import `JiraClient` in any Node.js application:
 
 ```javascript
 import { loadConfig, JiraClient } from './jira.mjs';
@@ -233,11 +235,11 @@ import { loadConfig, JiraClient } from './jira.mjs';
 const config = loadConfig();
 const jira = new JiraClient(config);
 
-// Obter dados do utilizador autenticado
+// Get current authenticated user
 const me = await jira.getCurrentUser();
-console.log(`Autenticado como: ${me.displayName}`);
+console.log(`Authenticated as: ${me.displayName}`);
 
-// Pesquisar issues
+// Search issues
 const { issues } = await jira.searchIssues('assignee = currentUser() AND statusCategory != Done');
 for (const issue of issues) {
   console.log(`- [${issue.key}] ${issue.fields.summary}`);
@@ -246,6 +248,6 @@ for (const issue of issues) {
 
 ---
 
-## 📄 Licença
+## 📄 License
 
-Distribuído sob a licença [MIT](LICENSE).
+Distributed under the [MIT License](LICENSE).

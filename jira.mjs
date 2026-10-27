@@ -3,7 +3,7 @@
  * Jira CLI & SDK Tool (Zero-Dependency, Node.js 18+)
  *
  * Connects to Jira Data Center / Server (Personal Access Token - Bearer)
- * or Jira Cloud (Email + API Token - Basic) using a local `.jira.config.json` file.
+ * or Jira Cloud (Email + API Token - Basic) using a local `jira.config.json` file.
  *
  * Features:
  *  - Read Boards, Sprints, Epics, User Stories, Transitions, Comments & Remote Links
@@ -79,7 +79,7 @@ export function assertNoSecrets(text, allowSecrets = false) {
   for (const pattern of SECRET_PATTERNS) {
     if (pattern.regex.test(text)) {
       throw new Error(
-        `[SEGURANÇA] Detetado possível segredo (${pattern.name}) no conteúdo a enviar para o Jira. Operação bloqueada.`
+        `[SECURITY] Potential secret (${pattern.name}) detected in the payload to be sent to Jira. Operation blocked.`
       );
     }
   }
@@ -112,7 +112,7 @@ export function loadConfig(options = {}) {
       const raw = fs.readFileSync(configPath, 'utf8');
       fileConfig = JSON.parse(raw);
     } catch (err) {
-      throw new Error(`Erro ao ler ficheiro de configuração (${configPath}): ${err.message}`);
+      throw new Error(`Error reading configuration file (${configPath}): ${err.message}`);
     }
   }
 
@@ -148,17 +148,17 @@ export function loadConfig(options = {}) {
 export function validateConfig(config) {
   if (!config.baseUrl || config.baseUrl === 'https://jira.example.com') {
     throw new Error(
-      `Configuração incompleta: define o "baseUrl" no ficheiro de configuração:\n  -> ${config.configPath}\n` +
-        `  ou executa: node tools/jira-cli/jira.mjs init --url https://jira.empresa.com --key <TUA_PERSONAL_KEY>`
+      `Incomplete configuration: specify "baseUrl" in your configuration file:\n  -> ${config.configPath}\n` +
+        `  or run: ./jira.mjs init --url https://jira.example.com --key <YOUR_PERSONAL_KEY>`
     );
   }
   if (
     !config.personalKey ||
-    config.personalKey === 'COLOCA_AQUI_A_TUA_PERSONAL_ACCESS_TOKEN'
+    config.personalKey === 'YOUR_PERSONAL_ACCESS_TOKEN'
   ) {
     throw new Error(
-      `Personal Key em falta! Coloca a tua Personal Access Token no ficheiro:\n  -> ${config.configPath}\n` +
-        `  Consulta o README.md para veres como obter a Personal Key no Jira.`
+      `Missing Personal Key! Set your Personal Access Token in:\n  -> ${config.configPath}\n` +
+        `  Refer to README.md for instructions on how to generate a Personal Key in Jira.`
     );
   }
 }
@@ -173,7 +173,7 @@ export class JiraClient {
     if (this.config.authType === 'basic') {
       if (!this.config.email) {
         throw new Error(
-          'Para authType="basic" (Jira Cloud), tens de preencher o campo "email" em .jira.config.json.'
+          'For authType="basic" (Jira Cloud), you must provide the "email" field in jira.config.json.'
         );
       }
       const token = Buffer.from(`${this.config.email}:${this.config.personalKey}`).toString('base64');
@@ -244,20 +244,20 @@ export class JiraClient {
 
       if (response.status === 401) {
         throw new Error(
-          `HTTP 401 Não Autorizado: Verifica se a tua Personal Key está correta e ativa em ${this.config.configPath}.`
+          `HTTP 401 Unauthorized: Verify that your Personal Key is correct and active in ${this.config.configPath}.`
         );
       }
       if (response.status === 403) {
         throw new Error(
-          `HTTP 403 Acesso Negado: A tua conta/token não tem permissões para este recurso (${url.pathname}). ${detail}`
+          `HTTP 403 Forbidden: Your account/token does not have permissions for this resource (${url.pathname}). ${detail}`
         );
       }
       if (response.status === 404) {
         throw new Error(
-          `HTTP 404 Não Encontrado (ou sem visibilidade para o teu token): ${url.pathname}${detail ? ` — ${detail}` : ''}`
+          `HTTP 404 Not Found (or no visibility for your token): ${url.pathname}${detail ? ` — ${detail}` : ''}`
         );
       }
-      throw new Error(`Erro Jira HTTP ${response.status} (${method} ${url.pathname}): ${detail || response.statusText}`);
+      throw new Error(`Jira HTTP Error ${response.status} (${method} ${url.pathname}): ${detail || response.statusText}`);
     }
 
     return data;
@@ -708,11 +708,11 @@ export class JiraClient {
 
     if (!matched) {
       const available = transitions
-        .map((t) => `[ID: ${t.id}] "${t.name}" -> Estado: "${t.to?.name || '?'}"`)
+        .map((t) => `[ID: ${t.id}] "${t.name}" -> Target Status: "${t.to?.name || '?'}"`)
         .join('\n  - ');
       throw new Error(
-        `Transição "${transitionIdOrName}" inválida para o estado atual de ${issueKey}.\n` +
-          `Transições disponíveis neste momento:\n  - ${available || '(nenhuma transição disponível)'}`
+        `Invalid transition "${transitionIdOrName}" for the current status of ${issueKey}.\n` +
+          `Available transitions right now:\n  - ${available || '(no transitions available)'}`
       );
     }
 
@@ -781,7 +781,7 @@ export class JiraClient {
       ) || types[0];
 
     if (!matched) {
-      throw new Error('Não foram encontrados tipos de link de issues nesta instância Jira.');
+      throw new Error('No issue link types found on this Jira instance.');
     }
 
     const body = {
@@ -863,7 +863,7 @@ function statusBadge(statusObj) {
 
 function printTable(headers, rows) {
   if (rows.length === 0) {
-    console.log(`${c.dim}(Sem resultados)${c.reset}`);
+    console.log(`${c.dim}(No results)${c.reset}`);
     return;
   }
   const widths = headers.map((h, idx) => {
@@ -897,25 +897,25 @@ function printIssuesTable(issues, total, truncated) {
     const type = f.issuetype?.name || '-';
     const status = statusBadge(f.status);
     const priority = f.priority?.name || '-';
-    const assignee = f.assignee?.displayName || f.assignee?.name || 'Não atribuído';
+    const assignee = f.assignee?.displayName || f.assignee?.name || 'Unassigned';
     const summary = f.summary || '';
     return [`${c.bold}${issue.key}${c.reset}`, type, status, priority, assignee, summary];
   });
 
-  printTable(['KEY', 'TIPO', 'ESTADO', 'PRIORIDADE', 'ASSIGNEE', 'RESUMO'], rows);
+  printTable(['KEY', 'TYPE', 'STATUS', 'PRIORITY', 'ASSIGNEE', 'SUMMARY'], rows);
   console.log(
-    `\n${c.dim}Mostrando ${issues.length} de ${total ?? issues.length} item(s).${
-      truncated ? ' (Resultados truncados — usa --all para listar todas as páginas)' : ''
+    `\n${c.dim}Showing ${issues.length} of ${total ?? issues.length} item(s).${
+      truncated ? ' (Truncated results — use --all to list all pages)' : ''
     }${c.reset}`
   );
 }
 
 function printDryRunIfApplicable(res) {
   if (res && res.__dryRun) {
-    console.log(`\n${c.yellow}${c.bold}[DRY-RUN ATIVO]${c.reset} Nenhum dado foi enviado para o Jira.`);
-    console.log(`${c.bold}Método:${c.reset} ${res.method}`);
+    console.log(`\n${c.yellow}${c.bold}[DRY-RUN ACTIVE]${c.reset} No data was sent to Jira.`);
+    console.log(`${c.bold}Method:${c.reset} ${res.method}`);
     console.log(`${c.bold}Endpoint:${c.reset} ${res.url}`);
-    console.log(`${c.bold}Payload JSON:${c.reset}\n${JSON.stringify(res.payload, null, 2)}`);
+    console.log(`${c.bold}JSON Payload:${c.reset}\n${JSON.stringify(res.payload, null, 2)}`);
     return true;
   }
   return false;
@@ -930,84 +930,84 @@ function renderProgressBar(percent, width = 24) {
 // ─── Help Menu ───────────────────────────────────────────────────────────────
 function printHelp() {
   console.log(`
-${c.bold}${c.cyan}🚀 Jira CLI & SDK Tool${c.reset} — Liga-te ao Jira (Data Center / Server / Cloud)
+${c.bold}${c.cyan}🚀 Jira CLI & SDK Tool${c.reset} — Connect to Jira (Data Center / Server / Cloud)
 
-${c.bold}CONFIGURAÇÃO & DIAGNÓSTICO:${c.reset}
+${c.bold}CONFIGURATION & DIAGNOSTICS:${c.reset}
   ${c.green}init${c.reset} --url <url> --key <pat> [--project <key>] [--board <id>] [--email <email>]
-      Configura ou atualiza o ficheiro local ${c.bold}.jira.config.json${c.reset} (ignorado pelo Git).
+      Configure or update the local ${c.bold}jira.config.json${c.reset} file (ignored by Git).
   ${c.green}whoami${c.reset}
-      Testa a ligação e mostra o utilizador autenticado e detalhes do servidor Jira.
-  ${c.green}projects${c.reset} [--search <texto>]
-      Lista os projetos Jira visíveis para o teu token.
+      Test connection and show authenticated user details and Jira server info.
+  ${c.green}projects${c.reset} [--search <text>]
+      List Jira projects visible to your token.
   ${c.green}issue-types${c.reset} [--project <key>]
-      Lista os tipos de issue reais do projeto (ex: Epic, Story, Task, Bug, Sub-task, Defect-PRD).
+      List valid issue types for a project (e.g., Epic, Story, Task, Bug, Sub-task).
   ${c.green}fields${c.reset} [--project <key>] --type <typeIdOrName>
-      Lista os campos obrigatórios e opcionais na criação de um tipo de issue num projeto.
+      List required and optional create fields for an issue type in a project.
 
 ${c.bold}BOARDS, SPRINTS & EPICS (AGILE):${c.reset}
-  ${c.green}boards${c.reset} [--project <key>] [--type scrum|kanban] [--search <nome>] [--all]
-      Lista as boards disponíveis.
+  ${c.green}boards${c.reset} [--project <key>] [--type scrum|kanban] [--search <name>] [--all]
+      List available boards.
   ${c.green}board-summary${c.reset} [boardId]
-      ${c.magenta}★ Dashboard visual da Board / Sprint Ativa${c.reset} (barra de progresso, estados, carga por pessoa).
-  ${c.green}board-issues${c.reset} [boardId] [--jql <filtro>] [--all]
-      Lista as User Stories / Issues de uma board.
+      ${c.magenta}★ Visual Dashboard of Active Board / Sprint${c.reset} (progress bar, status breakdown, workload).
+  ${c.green}board-issues${c.reset} [boardId] [--jql <filter>] [--all]
+      List User Stories / Issues for a board.
   ${c.green}sprints${c.reset} [boardId] [--state active,future,closed] [--all]
-      Lista as sprints de uma board.
+      List sprints for a board.
   ${c.green}sprint-issues${c.reset} <sprintId> [--all]
-      Lista as User Stories / Issues de uma sprint específica.
+      List User Stories / Issues for a specific sprint.
   ${c.green}epics${c.reset} [boardId] [--only-open] [--all]
-      Lista os épicos de uma board.
+      List epics for a board.
 
-${c.bold}LER & PESQUISAR USER STORIES / ISSUES:${c.reset}
+${c.bold}READ & SEARCH USER STORIES / ISSUES:${c.reset}
   ${c.green}get${c.reset} <issueKey>
-      Mostra todos os detalhes da User Story / Issue (descrição, critérios, subtarefas, links Confluence e comentários).
-  ${c.green}stories${c.reset} [--project <key>] [--epic <epicKey>] [--status <estado>] [--assignee <user>] [--all]
-      Lista User Stories (ou issues abertas) de um projeto ou épico.
+      Display full issue details (description, criteria, subtasks, remote links, comments).
+  ${c.green}stories${c.reset} [--project <key>] [--epic <epicKey>] [--status <status>] [--assignee <user>] [--all]
+      List User Stories (or open issues) for a project or epic.
   ${c.green}my-issues${c.reset} [--project <key>] [--include-done]
-      Lista todos os cards atribuídos a ti que ainda não estão concluídos.
+      List all open issues assigned to you.
   ${c.green}search${c.reset} "<JQL>" [--fields f1,f2] [--all]
-      Executa uma pesquisa JQL personalizada.
+      Execute a custom JQL query.
 
-${c.bold}CRIAR, EDITAR, TRANSIÇÕES & COMENTÁRIOS:${c.reset}
-  ${c.green}create${c.reset} --summary "<título>" [--project <key>] [--type Story] [--description "<texto>"]
-         [--priority <nome>] [--labels l1,l2] [--assignee <user>] [--epic <epicKey>] [--sprint <id>]
-      Cria uma User Story, Task, Bug ou Sub-task e associa opcionalmente a Épico e Sprint.
-  ${c.green}create-epic${c.reset} --summary "<título>" [--epic-name "<nome curto>"] [--project <key>] [--description "<texto>"]
-      Cria um Épico descobrindo automaticamente o campo obrigatório "Epic Name" da instância.
-  ${c.green}update${c.reset} <issueKey> [--summary "<novo>"] [--description "<nova>"] [--priority <p>]
+${c.bold}CREATE, EDIT, TRANSITIONS & COMMENTS:${c.reset}
+  ${c.green}create${c.reset} --summary "<title>" [--project <key>] [--type Story] [--description "<text>"]
+         [--priority <name>] [--labels l1,l2] [--assignee <user>] [--epic <epicKey>] [--sprint <id>]
+      Create a User Story, Task, Bug, or Sub-task, optionally linked to Epic/Sprint.
+  ${c.green}create-epic${c.reset} --summary "<title>" [--epic-name "<short name>"] [--project <key>] [--description "<text>"]
+      Create an Epic (auto-discovering the instance's mandatory "Epic Name" custom field).
+  ${c.green}update${c.reset} <issueKey> [--summary "<new>"] [--description "<new>"] [--priority <p>]
          [--add-label <l>] [--remove-label <l>] [--epic <epicKey>] [--sprint <id>]
-      Edita uma User Story / Issue existente.
+      Update an existing User Story / Issue.
   ${c.green}assign${c.reset} <issueKey> <username | --me | --unassign>
-      Atribui ou desatribui um card.
+      Assign or unassign an issue.
   ${c.green}transitions${c.reset} <issueKey>
-      Lista as transições de workflow disponíveis a partir do estado atual do card.
-  ${c.green}transition${c.reset} <issueKey> "<idOuNomeTransição>" [--comment "<nota>"] [--resolution "<res>"]
-      Move o card para um novo estado (ex: "In Progress", "Done").
+      List valid workflow transitions available from the issue's current status.
+  ${c.green}transition${c.reset} <issueKey> "<idOrTransitionName>" [--comment "<note>"] [--resolution "<res>"]
+      Move issue through workflow (e.g., "In Progress", "Done").
   ${c.green}comments${c.reset} <issueKey>
-      Lista todos os comentários do card.
-  ${c.green}comment${c.reset} <issueKey> "<texto do comentário>"
-      Adiciona um comentário ao card (com conversão segura Windows-1252).
-  ${c.green}edit-comment${c.reset} <issueKey> <commentId> "<novo texto>"
-      Edita um comentário existente.
+      List all comments on an issue.
+  ${c.green}comment${c.reset} <issueKey> "<comment text>"
+      Add a comment to an issue (with Windows-1252 safe transliteration).
+  ${c.green}edit-comment${c.reset} <issueKey> <commentId> "<new text>"
+      Edit an existing comment.
 
-${c.bold}PRODUTIVIDADE & ESPECIFICAÇÕES TÉCNICAS:${c.reset}
+${c.bold}PRODUCTIVITY & TECHNICAL SPECS:${c.reset}
   ${c.green}standup${c.reset} [--days 2] [--project <key>]
-      ${c.magenta}★ Gera o teu resumo de Daily Standup${c.reset} (O que fizeste recentemente, O que está In Progress, Bloqueios).
-  ${c.green}export-story${c.reset} <issueKey> [--output <ficheiro.md>]
-      ${c.magenta}★ Exporta uma User Story ou Épico para Markdown${c.reset} com Checklist Técnica de Implementação pronta para Dev/AI.
-  ${c.green}worklog${c.reset} <issueKey> "<tempo>" ["<comentário>"]
-      Regista tempo trabalhado no card (ex: "2h 30m").
+      ${c.magenta}★ Generate your Daily Standup report${c.reset} (Done recently, In Progress, To Do next).
+  ${c.green}export-story${c.reset} <issueKey> [--output <file.md>]
+      ${c.magenta}★ Export User Story or Epic to Markdown${c.reset} with Technical Implementation Checklist.
+  ${c.green}worklog${c.reset} <issueKey> "<time>" ["<comment>"]
+      Log time spent on an issue (e.g., "2h 30m").
   ${c.green}link${c.reset} <issueKey> <targetIssueKey> [--type Relates]
-      Cria relação entre dois cards (ex: Blocks, Relates).
+      Link two issues together (e.g., Blocks, Relates).
   ${c.green}remote-links${c.reset} <issueKey>
-      Lista páginas Confluence e links externos associados ao card.
-  ${c.green}link-url${c.reset} <issueKey> "<url>" "<título>"
-      Associa um link externo ou página Confluence ao card.
+      List Confluence documentation pages and external links attached to the issue.
+  ${c.green}link-url${c.reset} <issueKey> "<url>" "<title>"
+      Attach an external URL or documentation link to the issue.
 
-${c.bold}FLAGS GLOBAIS:${c.reset}
-  ${c.yellow}--dry-run${c.reset}       Simula operações de escrita mostrando o payload JSON sem enviar para o Jira.
-  ${c.yellow}--json${c.reset}          Devolve o resultado em formato JSON puro (ideal para scripts e agentes AI).
-  ${c.yellow}--config <path>${c.reset} Usa um ficheiro de configuração específico.
+${c.bold}GLOBAL FLAGS:${c.reset}
+  ${c.yellow}--dry-run${c.reset}       Simulate write operations and preview JSON payload without sending to Jira.
+  ${c.yellow}--json${c.reset}          Output results as raw JSON (ideal for scripts and AI agents).
+  ${c.yellow}--config <path>${c.reset} Use a specific configuration file path.
 `);
 }
 
@@ -1034,7 +1034,7 @@ async function main() {
 
     const updated = {
       baseUrl: flags.url || existing.baseUrl || 'https://jira.example.com',
-      personalKey: flags.key || existing.personalKey || 'COLOCA_AQUI_A_TUA_PERSONAL_ACCESS_TOKEN',
+      personalKey: flags.key || existing.personalKey || 'YOUR_PERSONAL_ACCESS_TOKEN',
       authType: flags['auth-type'] || (flags.email ? 'basic' : existing.authType || 'bearer'),
       email: flags.email !== undefined ? flags.email : existing.email || '',
       apiVersion: flags['api-version'] || existing.apiVersion || '2',
@@ -1046,8 +1046,8 @@ async function main() {
     };
 
     fs.writeFileSync(targetPath, JSON.stringify(updated, null, 2) + '\n', 'utf8');
-    console.log(`${c.green}✔ Configuração guardada com sucesso em:${c.reset} ${targetPath}`);
-    console.log(`${c.dim}(Este ficheiro está protegido no .gitignore para nunca expor a tua Personal Key)${c.reset}`);
+    console.log(`${c.green}✔ Configuration successfully saved to:${c.reset} ${targetPath}`);
+    console.log(`${c.dim}(This file is protected in .gitignore to never expose your Personal Key)${c.reset}`);
     return;
   }
 
@@ -1075,21 +1075,21 @@ async function main() {
         return;
       }
 
-      console.log(`\n${c.green}${c.bold}✔ Ligação ao Jira estabelecida com sucesso!${c.reset}`);
-      console.log(`  ${c.bold}Servidor:${c.reset}       ${server?.serverTitle || config.baseUrl} (${config.baseUrl})`);
+      console.log(`\n${c.green}${c.bold}✔ Successfully connected to Jira!${c.reset}`);
+      console.log(`  ${c.bold}Server:${c.reset}         ${server?.serverTitle || config.baseUrl} (${config.baseUrl})`);
       if (server?.version) {
-        console.log(`  ${c.bold}Versão Jira:${c.reset}    ${server.version} (${server.deploymentType || 'Server/DC'})`);
+        console.log(`  ${c.bold}Jira Version:${c.reset}   ${server.version} (${server.deploymentType || 'Server/DC'})`);
       }
-      console.log(`  ${c.bold}Utilizador:${c.reset}     ${user.displayName || user.name || '-'}`);
+      console.log(`  ${c.bold}User:${c.reset}           ${user.displayName || user.name || '-'}`);
       console.log(`  ${c.bold}Username/Key:${c.reset}   ${user.name || user.accountId || '-'}`);
       console.log(`  ${c.bold}Email:${c.reset}          ${user.emailAddress || '-'}`);
-      console.log(`  ${c.bold}Autenticação:${c.reset}   ${config.authType.toUpperCase()}`);
-      console.log(`  ${c.bold}Config Local:${c.reset}   ${config.configPath}`);
+      console.log(`  ${c.bold}Auth Type:${c.reset}      ${config.authType.toUpperCase()}`);
+      console.log(`  ${c.bold}Config Path:${c.reset}    ${config.configPath}`);
 
       const lowerName = `${user.displayName || ''} ${user.name || ''}`.toLowerCase();
       if (lowerName.includes('service') || lowerName.includes('bot') || lowerName.includes('integration')) {
         console.log(
-          `\n  ${c.yellow}⚠️ Nota:${c.reset} O token parece pertencer a uma conta de serviço (${user.displayName}).`
+          `\n  ${c.yellow}⚠️ Note:${c.reset} The token appears to belong to a service account (${user.displayName}).`
         );
       }
       break;
@@ -1118,8 +1118,8 @@ async function main() {
         p.lead?.displayName || p.lead?.name || '-',
         p.projectTypeKey || '-',
       ]);
-      printTable(['KEY', 'NOME DO PROJETO', 'LEAD', 'TIPO'], rows);
-      console.log(`\n${c.dim}Total: ${projects.length} projeto(s) visíveis para o teu token.${c.reset}`);
+      printTable(['KEY', 'PROJECT NAME', 'LEAD', 'TYPE'], rows);
+      console.log(`\n${c.dim}Total: ${projects.length} project(s) visible to your token.${c.reset}`);
       break;
     }
 
@@ -1128,7 +1128,7 @@ async function main() {
     case 'types': {
       const projectKey = flags.project || args[0] || config.defaultProject;
       if (!projectKey) {
-        throw new Error('Indica o projeto com --project <KEY> (ex: node jira.mjs issue-types --project PROJ)');
+        throw new Error('Specify project with --project <KEY> (e.g., ./jira.mjs issue-types --project PROJ)');
       }
       const types = await client.getProjectIssueTypes(projectKey);
       if (flags.json) {
@@ -1136,14 +1136,14 @@ async function main() {
         return;
       }
 
-      console.log(`\n${c.bold}Tipos de Issue disponíveis no projeto ${c.cyan}${projectKey}${c.reset}:\n`);
+      console.log(`\n${c.bold}Available Issue Types in project ${c.cyan}${projectKey}${c.reset}:\n`);
       const rows = types.map((t) => [
         t.id,
         `${c.bold}${t.name}${c.reset}`,
         t.subtask ? 'Sub-task' : 'Standard',
         t.description || '-',
       ]);
-      printTable(['ID', 'NOME EXATO', 'CATEGORIA', 'DESCRIÇÃO'], rows);
+      printTable(['ID', 'EXACT NAME', 'CATEGORY', 'DESCRIPTION'], rows);
       break;
     }
 
@@ -1153,7 +1153,7 @@ async function main() {
       const typeArg = flags.type || args[0];
       if (!projectKey || !typeArg) {
         throw new Error(
-          'Indica o projeto e o tipo de issue: node jira.mjs fields --project <KEY> --type <NomeOuID>'
+          'Specify project and issue type: ./jira.mjs fields --project <KEY> --type <NameOrID>'
         );
       }
 
@@ -1163,7 +1163,7 @@ async function main() {
       );
       if (!matchedType) {
         throw new Error(
-          `Tipo "${typeArg}" não encontrado em ${projectKey}. Tipos válidos: ${types.map((t) => t.name).join(', ')}`
+          `Type "${typeArg}" not found in ${projectKey}. Valid types: ${types.map((t) => t.name).join(', ')}`
         );
       }
 
@@ -1174,15 +1174,15 @@ async function main() {
       }
 
       console.log(
-        `\n${c.bold}Campos de criação para ${c.cyan}${projectKey}${c.reset} / ${c.bold}${matchedType.name}${c.reset} (ID ${matchedType.id}):\n`
+        `\n${c.bold}Create fields for ${c.cyan}${projectKey}${c.reset} / ${c.bold}${matchedType.name}${c.reset} (ID ${matchedType.id}):\n`
       );
       const rows = fields.map((f) => [
         `${c.bold}${f.fieldId || f.key}${c.reset}`,
         f.name || '-',
-        f.required ? `${c.red}OBRIGATÓRIO${c.reset}` : 'Opcional',
+        f.required ? `${c.red}REQUIRED${c.reset}` : 'Optional',
         f.schema?.type || '-',
       ]);
-      printTable(['FIELD ID', 'NOME', 'OBRIGATORIEDADE', 'TIPO DE DADOS'], rows);
+      printTable(['FIELD ID', 'NAME', 'REQUIRED', 'DATA TYPE'], rows);
       break;
     }
 
@@ -1207,10 +1207,10 @@ async function main() {
         b.type || '-',
         b.location?.projectKey || b.location?.displayName || '-',
       ]);
-      printTable(['BOARD ID', 'NOME DA BOARD', 'TIPO', 'PROJETO / LOCALIZAÇÃO'], rows);
+      printTable(['BOARD ID', 'BOARD NAME', 'TYPE', 'PROJECT / LOCATION'], rows);
       console.log(
-        `\n${c.dim}Mostrando ${res.values.length} de ${res.total} board(s).${
-          res.truncated ? ' (Usa --all para percorrer todas as páginas)' : ''
+        `\n${c.dim}Showing ${res.values.length} of ${res.total} board(s).${
+          res.truncated ? ' (Use --all to fetch all pages)' : ''
         }${c.reset}`
       );
       break;
@@ -1219,7 +1219,7 @@ async function main() {
     case 'sprints': {
       const boardId = args[0] || flags.board || config.defaultBoardId;
       if (!boardId) {
-        throw new Error('Indica o ID da board: node jira.mjs sprints <boardId>');
+        throw new Error('Specify board ID: ./jira.mjs sprints <boardId>');
       }
       const res = await client.listSprints(boardId, {
         state: flags.state,
@@ -1243,14 +1243,14 @@ async function main() {
         s.endDate ? s.endDate.slice(0, 10) : '-',
         s.goal || '-',
       ]);
-      printTable(['SPRINT ID', 'NOME', 'ESTADO', 'INÍCIO', 'FIM', 'OBJETIVO (GOAL)'], rows);
+      printTable(['SPRINT ID', 'NAME', 'STATE', 'START', 'END', 'GOAL'], rows);
       break;
     }
 
     case 'epics': {
       const boardId = args[0] || flags.board || config.defaultBoardId;
       if (!boardId) {
-        throw new Error('Indica o ID da board: node jira.mjs epics <boardId>');
+        throw new Error('Specify board ID: ./jira.mjs epics <boardId>');
       }
       const res = await client.listEpics(boardId, {
         done: flags['only-open'] ? 'false' : undefined,
@@ -1265,17 +1265,17 @@ async function main() {
       const rows = res.values.map((e) => [
         `${c.bold}${e.key}${c.reset}`,
         e.name || '-',
-        e.done ? `${c.green}Concluído${c.reset}` : `${c.yellow}Aberto${c.reset}`,
+        e.done ? `${c.green}Done${c.reset}` : `${c.yellow}Open${c.reset}`,
         e.summary || '-',
       ]);
-      printTable(['EPIC KEY', 'EPIC NAME', 'ESTADO', 'RESUMO'], rows);
+      printTable(['EPIC KEY', 'EPIC NAME', 'STATUS', 'SUMMARY'], rows);
       break;
     }
 
     case 'board-issues': {
       const boardId = args[0] || flags.board || config.defaultBoardId;
       if (!boardId) {
-        throw new Error('Indica o ID da board: node jira.mjs board-issues <boardId>');
+        throw new Error('Specify board ID: ./jira.mjs board-issues <boardId>');
       }
       const res = await client.listBoardIssues(boardId, {
         jql: flags.jql,
@@ -1294,7 +1294,7 @@ async function main() {
     case 'sprint-issues': {
       const sprintId = args[0] || flags.sprint;
       if (!sprintId) {
-        throw new Error('Indica o ID da sprint: node jira.mjs sprint-issues <sprintId>');
+        throw new Error('Specify sprint ID: ./jira.mjs sprint-issues <sprintId>');
       }
       const res = await client.listSprintIssues(sprintId, {
         jql: flags.jql,
@@ -1314,7 +1314,7 @@ async function main() {
     case 'board-summary': {
       const boardId = args[0] || flags.board || config.defaultBoardId;
       if (!boardId) {
-        throw new Error('Indica o ID da board: node jira.mjs board-summary <boardId>');
+        throw new Error('Specify board ID: ./jira.mjs board-summary <boardId>');
       }
 
       let activeSprint = null;
@@ -1344,9 +1344,9 @@ async function main() {
 
       for (const issue of issues) {
         const f = issue.fields || {};
-        const statusName = f.status?.name || 'Desconhecido';
+        const statusName = f.status?.name || 'Unknown';
         const catKey = f.status?.statusCategory?.key || 'undefined';
-        const assignee = f.assignee?.displayName || f.assignee?.name || 'Não atribuído';
+        const assignee = f.assignee?.displayName || f.assignee?.name || 'Unassigned';
         const prio = f.priority?.name || '';
 
         byStatus[statusName] = (byStatus[statusName] || 0) + 1;
@@ -1378,39 +1378,39 @@ async function main() {
         return;
       }
 
-      console.log(`\n${c.bold}${c.cyan}📊 RESUMO DA BOARD #${boardId}${c.reset}`);
+      console.log(`\n${c.bold}${c.cyan}📊 BOARD SUMMARY #${boardId}${c.reset}`);
       if (activeSprint) {
         console.log(
-          `${c.bold}Sprint Ativa:${c.reset} ${activeSprint.name} (#${activeSprint.id}) | ${
+          `${c.bold}Active Sprint:${c.reset} ${activeSprint.name} (#${activeSprint.id}) | ${
             activeSprint.startDate ? activeSprint.startDate.slice(0, 10) : '?'
           } -> ${activeSprint.endDate ? activeSprint.endDate.slice(0, 10) : '?'}`
         );
         if (activeSprint.goal) {
-          console.log(`${c.bold}Goal:${c.reset}         ${activeSprint.goal}`);
+          console.log(`${c.bold}Goal:${c.reset}          ${activeSprint.goal}`);
         }
       } else {
-        console.log(`${c.dim}(Board sem Sprint ativa / Kanban — a mostrar items abertos)${c.reset}`);
+        console.log(`${c.dim}(Board has no active Sprint / Kanban — showing open items)${c.reset}`);
       }
 
-      console.log(`\n${c.bold}Progresso Geral:${c.reset} ${renderProgressBar(pctDone)} (${byCategory.done}/${total} concluídos)`);
+      console.log(`\n${c.bold}Overall Progress:${c.reset} ${renderProgressBar(pctDone)} (${byCategory.done}/${total} completed)`);
       console.log(
-        `  • ${c.cyan}Por Iniciar (To Do):${c.reset} ${byCategory.todo}   |   ` +
-          `• ${c.yellow}Em Curso (In Progress):${c.reset} ${byCategory.inProgress}   |   ` +
-          `• ${c.green}Concluídos (Done):${c.reset} ${byCategory.done}`
+        `  • ${c.cyan}To Do:${c.reset} ${byCategory.todo}   |   ` +
+          `• ${c.yellow}In Progress:${c.reset} ${byCategory.inProgress}   |   ` +
+          `• ${c.green}Done:${c.reset} ${byCategory.done}`
       );
 
-      console.log(`\n${c.bold}Distribuição por Estado:${c.reset}`);
+      console.log(`\n${c.bold}Status Breakdown:${c.reset}`);
       for (const [st, count] of Object.entries(byStatus)) {
         console.log(`  - ${pad(st, 28)} ${c.bold}${count}${c.reset}`);
       }
 
-      console.log(`\n${c.bold}Carga por Membro da Equipa:${c.reset}`);
+      console.log(`\n${c.bold}Workload by Team Member:${c.reset}`);
       for (const [person, count] of Object.entries(byAssignee).sort((a, b) => b[1] - a[1])) {
         console.log(`  - ${pad(person, 28)} ${c.bold}${count}${c.reset} card(s)`);
       }
 
       if (highPriority.length > 0) {
-        console.log(`\n${c.red}${c.bold}🔥 Cards Prioritários / Críticos em Aberto (${highPriority.length}):${c.reset}`);
+        console.log(`\n${c.red}${c.bold}🔥 Critical / High Priority Open Cards (${highPriority.length}):${c.reset}`);
         for (const hp of highPriority.slice(0, 10)) {
           console.log(
             `  • ${c.bold}${hp.key}${c.reset} [${hp.fields?.priority?.name}] (${hp.fields?.status?.name}) — ${hp.fields?.summary}`
@@ -1426,7 +1426,7 @@ async function main() {
     case 'story': {
       const issueKey = args[0] || flags.key;
       if (!issueKey) {
-        throw new Error('Indica a chave do card: node jira.mjs get <ISSUE-KEY>');
+        throw new Error('Specify issue key: ./jira.mjs get <ISSUE-KEY>');
       }
 
       const [issue, remoteLinks] = await Promise.all([
@@ -1442,14 +1442,14 @@ async function main() {
       const f = issue.fields || {};
       console.log(`\n${c.bold}${c.cyan}[${issue.key}] ${f.summary || ''}${c.reset}`);
       console.log(`${c.gray}${'═'.repeat(72)}${c.reset}`);
-      console.log(`  ${c.bold}Tipo:${c.reset}        ${f.issuetype?.name || '-'}`);
+      console.log(`  ${c.bold}Type:${c.reset}        ${f.issuetype?.name || '-'}`);
       console.log(
-        `  ${c.bold}Estado:${c.reset}      ${statusBadge(f.status)} ${c.dim}(Categoria: ${
+        `  ${c.bold}Status:${c.reset}      ${statusBadge(f.status)} ${c.dim}(Category: ${
           f.status?.statusCategory?.name || '-'
         })${c.reset}`
       );
-      console.log(`  ${c.bold}Prioridade:${c.reset}  ${f.priority?.name || '-'}`);
-      console.log(`  ${c.bold}Assignee:${c.reset}    ${f.assignee?.displayName || f.assignee?.name || 'Não atribuído'}`);
+      console.log(`  ${c.bold}Priority:${c.reset}    ${f.priority?.name || '-'}`);
+      console.log(`  ${c.bold}Assignee:${c.reset}    ${f.assignee?.displayName || f.assignee?.name || 'Unassigned'}`);
       console.log(`  ${c.bold}Reporter:${c.reset}    ${f.reporter?.displayName || f.reporter?.name || '-'}`);
       console.log(`  ${c.bold}Labels:${c.reset}      ${(f.labels || []).join(', ') || '-'}`);
       if (f.parent) {
@@ -1457,19 +1457,19 @@ async function main() {
       }
       console.log(`  ${c.bold}URL:${c.reset}         ${config.baseUrl}/browse/${issue.key}`);
 
-      console.log(`\n${c.bold}📝 Descrição:${c.reset}`);
+      console.log(`\n${c.bold}📝 Description:${c.reset}`);
       console.log(`${c.gray}${'─'.repeat(72)}${c.reset}`);
-      console.log(f.description ? String(f.description).trim() : `${c.dim}(Sem descrição)${c.reset}`);
+      console.log(f.description ? String(f.description).trim() : `${c.dim}(No description)${c.reset}`);
 
       if (Array.isArray(f.subtasks) && f.subtasks.length > 0) {
-        console.log(`\n${c.bold}📌 Subtarefas (${f.subtasks.length}):${c.reset}`);
+        console.log(`\n${c.bold}📌 Subtasks (${f.subtasks.length}):${c.reset}`);
         for (const st of f.subtasks) {
           console.log(`  • ${c.bold}${st.key}${c.reset} [${ statusBadge(st.fields?.status) }] ${st.fields?.summary || ''}`);
         }
       }
 
       if (Array.isArray(f.issuelinks) && f.issuelinks.length > 0) {
-        console.log(`\n${c.bold}🔗 Issues Relacionadas (${f.issuelinks.length}):${c.reset}`);
+        console.log(`\n${c.bold}🔗 Linked Issues (${f.issuelinks.length}):${c.reset}`);
         for (const link of f.issuelinks) {
           if (link.outwardIssue) {
             console.log(
@@ -1488,7 +1488,7 @@ async function main() {
       }
 
       if (Array.isArray(remoteLinks) && remoteLinks.length > 0) {
-        console.log(`\n${c.bold}📚 Documentação Confluence / Remote Links (${remoteLinks.length}):${c.reset}`);
+        console.log(`\n${c.bold}📚 Remote Links / Documentation (${remoteLinks.length}):${c.reset}`);
         for (const rl of remoteLinks) {
           console.log(`  • ${c.bold}${rl.object?.title || 'Link'}:${c.reset} ${rl.object?.url || '-'}`);
         }
@@ -1496,16 +1496,16 @@ async function main() {
 
       const comments = f.comment?.comments || [];
       if (comments.length > 0) {
-        console.log(`\n${c.bold}💬 Comentários (${comments.length}):${c.reset}`);
+        console.log(`\n${c.bold}💬 Comments (${comments.length}):${c.reset}`);
         console.log(`${c.gray}${'─'.repeat(72)}${c.reset}`);
         for (const cm of comments.slice(-5)) {
-          const author = cm.author?.displayName || cm.author?.name || 'Utilizador';
+          const author = cm.author?.displayName || cm.author?.name || 'User';
           const date = cm.created ? cm.created.slice(0, 16).replace('T', ' ') : '';
           console.log(`${c.bold}[ID: ${cm.id}] ${author}${c.reset} ${c.dim}(${date})${c.reset}:`);
           console.log(`  ${String(cm.body || '').split('\n').join('\n  ')}\n`);
         }
         if (comments.length > 5) {
-          console.log(`${c.dim}(Usa "node jira.mjs comments ${issue.key}" para ver todos os ${comments.length} comentários)${c.reset}`);
+          console.log(`${c.dim}(Use "./jira.mjs comments ${issue.key}" to see all ${comments.length} comments)${c.reset}`);
         }
       }
       break;
@@ -1560,7 +1560,7 @@ async function main() {
     case 'search': {
       const jql = args[0] || flags.jql;
       if (!jql) {
-        throw new Error('Indica a expressão JQL: node jira.mjs search "project = PROJ AND statusCategory != Done"');
+        throw new Error('Specify JQL query: ./jira.mjs search "project = PROJ AND statusCategory != Done"');
       }
       const res = await client.searchIssues(jql, {
         fields: flags.fields,
@@ -1582,7 +1582,7 @@ async function main() {
       const summary = flags.summary || args[0];
       if (!projectKey || !summary) {
         throw new Error(
-          'Uso: node jira.mjs create --project <KEY> --summary "<Título>" [--type Story] [--description "<Texto>"] [--epic <EPIC-KEY>]'
+          'Usage: ./jira.mjs create --project <KEY> --summary "<Title>" [--type Story] [--description "<Text>"] [--epic <EPIC-KEY>]'
         );
       }
 
@@ -1617,7 +1617,7 @@ async function main() {
       }
 
       console.log(
-        `\n${c.green}${c.bold}✔ Card criado com sucesso:${c.reset} ${c.bold}${res.key}${c.reset} (${config.baseUrl}/browse/${res.key})`
+        `\n${c.green}${c.bold}✔ Issue created successfully:${c.reset} ${c.bold}${res.key}${c.reset} (${config.baseUrl}/browse/${res.key})`
       );
       break;
     }
@@ -1627,7 +1627,7 @@ async function main() {
       const summary = flags.summary || args[0];
       if (!projectKey || !summary) {
         throw new Error(
-          'Uso: node jira.mjs create-epic --project <KEY> --summary "<Título do Épico>" [--epic-name "<Nome Curto>"] [--description "<Texto>"]'
+          'Usage: ./jira.mjs create-epic --project <KEY> --summary "<Epic Title>" [--epic-name "<Short Name>"] [--description "<Text>"]'
         );
       }
 
@@ -1647,7 +1647,7 @@ async function main() {
       }
 
       console.log(
-        `\n${c.green}${c.bold}✔ Épico criado com sucesso:${c.reset} ${c.bold}${res.key}${c.reset} (${config.baseUrl}/browse/${res.key})`
+        `\n${c.green}${c.bold}✔ Epic created successfully:${c.reset} ${c.bold}${res.key}${c.reset} (${config.baseUrl}/browse/${res.key})`
       );
       break;
     }
@@ -1658,7 +1658,7 @@ async function main() {
       const issueKey = args[0] || flags.key;
       if (!issueKey) {
         throw new Error(
-          'Uso: node jira.mjs update <ISSUE-KEY> [--summary "<Novo>"] [--description "<Nova>"] [--priority <P>] [--add-label <L>]'
+          'Usage: ./jira.mjs update <ISSUE-KEY> [--summary "<New>"] [--description "<New>"] [--priority <P>] [--add-label <L>]'
         );
       }
 
@@ -1703,14 +1703,14 @@ async function main() {
         if (printDryRunIfApplicable(res)) return;
       }
 
-      console.log(`${c.green}✔ Card ${c.bold}${issueKey}${c.reset}${c.green} atualizado com sucesso!${c.reset}`);
+      console.log(`${c.green}✔ Card ${c.bold}${issueKey}${c.reset}${c.green} updated successfully!${c.reset}`);
       break;
     }
 
     case 'assign': {
       const issueKey = args[0];
       if (!issueKey) {
-        throw new Error('Uso: node jira.mjs assign <ISSUE-KEY> <username | --me | --unassign>');
+        throw new Error('Usage: ./jira.mjs assign <ISSUE-KEY> <username | --me | --unassign>');
       }
 
       let targetUser = args[1] || flags.user;
@@ -1722,14 +1722,14 @@ async function main() {
       }
 
       if (targetUser === undefined) {
-        throw new Error('Indica o username, --me ou --unassign.');
+        throw new Error('Specify username, --me or --unassign.');
       }
 
       const res = await client.assignIssue(issueKey, targetUser);
       if (printDryRunIfApplicable(res)) return;
       console.log(
-        `${c.green}✔ Card ${c.bold}${issueKey}${c.reset}${c.green} atribuído a: ${
-          targetUser === null ? '(Não atribuído)' : targetUser
+        `${c.green}✔ Card ${c.bold}${issueKey}${c.reset}${c.green} assigned to: ${
+          targetUser === null ? '(Unassigned)' : targetUser
         }${c.reset}`
       );
       break;
@@ -1739,7 +1739,7 @@ async function main() {
     case 'transitions': {
       const issueKey = args[0] || flags.key;
       if (!issueKey) {
-        throw new Error('Uso: node jira.mjs transitions <ISSUE-KEY>');
+        throw new Error('Usage: ./jira.mjs transitions <ISSUE-KEY>');
       }
       const transitions = await client.getTransitions(issueKey);
       if (flags.json) {
@@ -1747,14 +1747,14 @@ async function main() {
         return;
       }
 
-      console.log(`\n${c.bold}Transições disponíveis para ${c.cyan}${issueKey}${c.reset}:\n`);
+      console.log(`\n${c.bold}Available transitions for ${c.cyan}${issueKey}${c.reset}:\n`);
       const rows = transitions.map((t) => [
         `${c.bold}${t.id}${c.reset}`,
         t.name || '-',
         statusBadge(t.to),
         t.to?.statusCategory?.name || '-',
       ]);
-      printTable(['ID', 'NOME DA TRANSIÇÃO', 'ESTADO DESTINO', 'CATEGORIA'], rows);
+      printTable(['ID', 'TRANSITION NAME', 'TARGET STATUS', 'CATEGORY'], rows);
       break;
     }
 
@@ -1764,7 +1764,7 @@ async function main() {
       const targetTransition = args[1] || flags.to;
       if (!issueKey || !targetTransition) {
         throw new Error(
-          'Uso: node jira.mjs transition <ISSUE-KEY> "<ID ou Nome da Transição>" [--comment "<Nota>"]'
+          'Usage: ./jira.mjs transition <ISSUE-KEY> "<ID or Transition Name>" [--comment "<Note>"]'
         );
       }
 
@@ -1775,7 +1775,7 @@ async function main() {
 
       if (printDryRunIfApplicable(response)) return;
       console.log(
-        `${c.green}✔ ${c.bold}${issueKey}${c.reset}${c.green} movido através da transição "${matchedTransition.name}" -> ${c.bold}${matchedTransition.to?.name}${c.reset}`
+        `${c.green}✔ ${c.bold}${issueKey}${c.reset}${c.green} moved via transition "${matchedTransition.name}" -> ${c.bold}${matchedTransition.to?.name}${c.reset}`
       );
       break;
     }
@@ -1784,7 +1784,7 @@ async function main() {
     case 'comments': {
       const issueKey = args[0] || flags.key;
       if (!issueKey) {
-        throw new Error('Uso: node jira.mjs comments <ISSUE-KEY>');
+        throw new Error('Usage: ./jira.mjs comments <ISSUE-KEY>');
       }
       const comments = await client.getComments(issueKey);
       if (flags.json) {
@@ -1792,9 +1792,9 @@ async function main() {
         return;
       }
 
-      console.log(`\n${c.bold}💬 Comentários em ${c.cyan}${issueKey}${c.reset} (${comments.length}):\n`);
+      console.log(`\n${c.bold}💬 Comments on ${c.cyan}${issueKey}${c.reset} (${comments.length}):\n`);
       for (const cm of comments) {
-        const author = cm.author?.displayName || cm.author?.name || 'Utilizador';
+        const author = cm.author?.displayName || cm.author?.name || 'User';
         const date = cm.created ? cm.created.slice(0, 16).replace('T', ' ') : '';
         console.log(`${c.bold}[ID: ${cm.id}] ${author}${c.reset} ${c.dim}(${date})${c.reset}:`);
         console.log(`  ${String(cm.body || '').split('\n').join('\n  ')}`);
@@ -1807,7 +1807,7 @@ async function main() {
       const issueKey = args[0];
       const text = args.slice(1).join(' ') || flags.text || flags.body;
       if (!issueKey || !text) {
-        throw new Error('Uso: node jira.mjs comment <ISSUE-KEY> "<Texto do comentário>"');
+        throw new Error('Usage: ./jira.mjs comment <ISSUE-KEY> "<Comment text>"');
       }
 
       const res = await client.addComment(issueKey, text);
@@ -1816,7 +1816,7 @@ async function main() {
         console.log(JSON.stringify(res, null, 2));
         return;
       }
-      console.log(`${c.green}✔ Comentário adicionado a ${c.bold}${issueKey}${c.reset} (ID: ${res.id})`);
+      console.log(`${c.green}✔ Comment added to ${c.bold}${issueKey}${c.reset} (ID: ${res.id})`);
       break;
     }
 
@@ -1825,12 +1825,12 @@ async function main() {
       const commentId = args[1];
       const text = args.slice(2).join(' ') || flags.text || flags.body;
       if (!issueKey || !commentId || !text) {
-        throw new Error('Uso: node jira.mjs edit-comment <ISSUE-KEY> <COMMENT-ID> "<Novo texto>"');
+        throw new Error('Usage: ./jira.mjs edit-comment <ISSUE-KEY> <COMMENT-ID> "<New text>"');
       }
 
       const res = await client.editComment(issueKey, commentId, text);
       if (printDryRunIfApplicable(res)) return;
-      console.log(`${c.green}✔ Comentário #${commentId} em ${c.bold}${issueKey}${c.reset} atualizado com sucesso!`);
+      console.log(`${c.green}✔ Comment #${commentId} on ${c.bold}${issueKey}${c.reset} updated successfully!`);
       break;
     }
 
@@ -1839,12 +1839,12 @@ async function main() {
       const epicKey = args[0] || flags.epic;
       const issueKeys = args.slice(1);
       if (!epicKey || issueKeys.length === 0) {
-        throw new Error('Uso: node jira.mjs move-to-epic <EPIC-KEY> <ISSUE-1> [ISSUE-2 ...]');
+        throw new Error('Usage: ./jira.mjs move-to-epic <EPIC-KEY> <ISSUE-1> [ISSUE-2 ...]');
       }
       const res = await client.moveIssuesToEpic(epicKey, issueKeys);
       if (printDryRunIfApplicable(res)) return;
       console.log(
-        `${c.green}✔ Card(s) ${c.bold}${issueKeys.join(', ')}${c.reset}${c.green} associado(s) ao épico ${c.bold}${epicKey}${c.reset}`
+        `${c.green}✔ Card(s) ${c.bold}${issueKeys.join(', ')}${c.reset}${c.green} linked to epic ${c.bold}${epicKey}${c.reset}`
       );
       break;
     }
@@ -1853,12 +1853,12 @@ async function main() {
       const sprintId = args[0] || flags.sprint;
       const issueKeys = args.slice(1);
       if (!sprintId || issueKeys.length === 0) {
-        throw new Error('Uso: node jira.mjs move-to-sprint <SPRINT-ID> <ISSUE-1> [ISSUE-2 ...]');
+        throw new Error('Usage: ./jira.mjs move-to-sprint <SPRINT-ID> <ISSUE-1> [ISSUE-2 ...]');
       }
       const res = await client.moveIssuesToSprint(sprintId, issueKeys);
       if (printDryRunIfApplicable(res)) return;
       console.log(
-        `${c.green}✔ Card(s) ${c.bold}${issueKeys.join(', ')}${c.reset}${c.green} movido(s) para a sprint #${c.bold}${sprintId}${c.reset}`
+        `${c.green}✔ Card(s) ${c.bold}${issueKeys.join(', ')}${c.reset}${c.green} moved to sprint #${c.bold}${sprintId}${c.reset}`
       );
       break;
     }
@@ -1868,11 +1868,11 @@ async function main() {
       const timeSpent = args[1] || flags.time;
       const comment = args.slice(2).join(' ') || flags.comment || '';
       if (!issueKey || !timeSpent) {
-        throw new Error('Uso: node jira.mjs worklog <ISSUE-KEY> "<Tempo ex: 2h 30m>" ["<Comentário>"]');
+        throw new Error('Usage: ./jira.mjs worklog <ISSUE-KEY> "<Time e.g. 2h 30m>" ["<Comment>"]');
       }
       const res = await client.addWorklog(issueKey, timeSpent, comment);
       if (printDryRunIfApplicable(res)) return;
-      console.log(`${c.green}✔ Registado worklog de ${c.bold}${timeSpent}${c.reset}${c.green} em ${issueKey}!${c.reset}`);
+      console.log(`${c.green}✔ Logged ${c.bold}${timeSpent}${c.reset}${c.green} on ${issueKey}!${c.reset}`);
       break;
     }
 
@@ -1880,18 +1880,18 @@ async function main() {
       const inwardKey = args[0];
       const outwardKey = args[1];
       if (!inwardKey || !outwardKey) {
-        throw new Error('Uso: node jira.mjs link <ISSUE-1> <ISSUE-2> [--type Relates]');
+        throw new Error('Usage: ./jira.mjs link <ISSUE-1> <ISSUE-2> [--type Relates]');
       }
       const res = await client.linkIssues(inwardKey, outwardKey, flags.type || 'Relates', flags.comment);
       if (printDryRunIfApplicable(res)) return;
-      console.log(`${c.green}✔ Link criado entre ${c.bold}${inwardKey}${c.reset}${c.green} e ${c.bold}${outwardKey}${c.reset}`);
+      console.log(`${c.green}✔ Link created between ${c.bold}${inwardKey}${c.reset}${c.green} and ${c.bold}${outwardKey}${c.reset}`);
       break;
     }
 
     case 'remote-links': {
       const issueKey = args[0];
       if (!issueKey) {
-        throw new Error('Uso: node jira.mjs remote-links <ISSUE-KEY>');
+        throw new Error('Usage: ./jira.mjs remote-links <ISSUE-KEY>');
       }
       const links = await client.getRemoteLinks(issueKey);
       if (flags.json) {
@@ -1904,7 +1904,7 @@ async function main() {
         l.object?.url || '-',
         l.application?.name || '-',
       ]);
-      printTable(['ID', 'TÍTULO', 'URL', 'APLICAÇÃO'], rows);
+      printTable(['ID', 'TITLE', 'URL', 'APPLICATION'], rows);
       break;
     }
 
@@ -1913,11 +1913,11 @@ async function main() {
       const url = args[1] || flags.url;
       const title = args[2] || flags.title || url;
       if (!issueKey || !url) {
-        throw new Error('Uso: node jira.mjs link-url <ISSUE-KEY> "<URL>" "<Título da página>"');
+        throw new Error('Usage: ./jira.mjs link-url <ISSUE-KEY> "<URL>" "<Page Title>"');
       }
       const res = await client.addRemoteLink(issueKey, url, title, flags.summary || '');
       if (printDryRunIfApplicable(res)) return;
-      console.log(`${c.green}✔ Link remoto associado a ${c.bold}${issueKey}${c.reset}: ${title}`);
+      console.log(`${c.green}✔ Remote link attached to ${c.bold}${issueKey}${c.reset}: ${title}`);
       break;
     }
 
@@ -1945,28 +1945,28 @@ async function main() {
         return;
       }
 
-      console.log(`\n${c.bold}${c.cyan}🎙️  RESUMO PARA DAILY STANDUP (Últimos ${days} dias)${c.reset}`);
+      console.log(`\n${c.bold}${c.cyan}🎙️  DAILY STANDUP SUMMARY (Past ${days} days)${c.reset}`);
       console.log(`${c.gray}${'═'.repeat(68)}${c.reset}`);
 
-      console.log(`\n${c.green}${c.bold}✔ O que concluí recentemente (${doneRes.issues.length}):${c.reset}`);
+      console.log(`\n${c.green}${c.bold}✔ Completed Recently (${doneRes.issues.length}):${c.reset}`);
       if (doneRes.issues.length === 0) {
-        console.log(`  ${c.dim}(Nenhum card fechado nos últimos ${days} dias)${c.reset}`);
+        console.log(`  ${c.dim}(No cards completed in the last ${days} days)${c.reset}`);
       } else {
         for (const i of doneRes.issues) {
           console.log(`  • ${c.bold}${i.key}${c.reset} — ${i.fields?.summary} (${i.fields?.status?.name})`);
         }
       }
 
-      console.log(`\n${c.yellow}${c.bold}🚧 Em que estou a trabalhar agora (${inProgress.length}):${c.reset}`);
+      console.log(`\n${c.yellow}${c.bold}🚧 In Progress Now (${inProgress.length}):${c.reset}`);
       if (inProgress.length === 0) {
-        console.log(`  ${c.dim}(Nenhum card na categoria In Progress)${c.reset}`);
+        console.log(`  ${c.dim}(No cards in the In Progress category)${c.reset}`);
       } else {
         for (const i of inProgress) {
           console.log(`  • ${c.bold}${i.key}${c.reset} [${i.fields?.status?.name}] — ${i.fields?.summary}`);
         }
       }
 
-      console.log(`\n${c.cyan}${c.bold}📋 Próximos em fila / To Do (${todo.length}):${c.reset}`);
+      console.log(`\n${c.cyan}${c.bold}📋 Next Up / To Do (${todo.length}):${c.reset}`);
       for (const i of todo.slice(0, 8)) {
         console.log(`  • ${c.bold}${i.key}${c.reset} [${i.fields?.status?.name}] — ${i.fields?.summary}`);
       }
@@ -1977,7 +1977,7 @@ async function main() {
     case 'export-story': {
       const issueKey = args[0] || flags.key;
       if (!issueKey) {
-        throw new Error('Uso: node jira.mjs export-story <ISSUE-KEY> [--output spec.md]');
+        throw new Error('Usage: ./jira.mjs export-story <ISSUE-KEY> [--output spec.md]');
       }
 
       const [issue, remoteLinks] = await Promise.all([
@@ -1992,17 +1992,17 @@ async function main() {
       const mdLines = [
         `# [${issue.key}] ${f.summary || 'User Story'}`,
         ``,
-        `> **Tipo:** ${f.issuetype?.name || '-'} | **Estado:** ${f.status?.name || '-'} | **Prioridade:** ${f.priority?.name || '-'}`,
-        `> **Assignee:** ${f.assignee?.displayName || 'Não atribuído'} | **URL:** ${config.baseUrl}/browse/${issue.key}`,
+        `> **Type:** ${f.issuetype?.name || '-'} | **Status:** ${f.status?.name || '-'} | **Priority:** ${f.priority?.name || '-'}`,
+        `> **Assignee:** ${f.assignee?.displayName || 'Unassigned'} | **URL:** ${config.baseUrl}/browse/${issue.key}`,
         ``,
-        `## 1. Descrição & Contexto de Negócio`,
+        `## 1. Description & Business Context`,
         ``,
-        f.description ? String(f.description).trim() : '_Sem descrição detalhada no card._',
+        f.description ? String(f.description).trim() : '_No detailed description provided._',
         ``,
       ];
 
       if (subtasks.length > 0) {
-        mdLines.push(`## 2. Subtarefas no Jira`);
+        mdLines.push(`## 2. Subtasks`);
         mdLines.push(``);
         for (const st of subtasks) {
           const isDone = st.fields?.status?.statusCategory?.key === 'done';
@@ -2012,7 +2012,7 @@ async function main() {
       }
 
       if (Array.isArray(remoteLinks) && remoteLinks.length > 0) {
-        mdLines.push(`## 3. Documentação Confluence & Links Associados`);
+        mdLines.push(`## 3. Remote Links & Documentation`);
         mdLines.push(``);
         for (const rl of remoteLinks) {
           mdLines.push(`- [${rl.object?.title || rl.object?.url}](${rl.object?.url})`);
@@ -2021,10 +2021,10 @@ async function main() {
       }
 
       if (comments.length > 0) {
-        mdLines.push(`## 4. Notas Técnicas & Comentários Recentes`);
+        mdLines.push(`## 4. Technical Notes & Recent Comments`);
         mdLines.push(``);
         for (const cm of comments.slice(-5)) {
-          const author = cm.author?.displayName || cm.author?.name || 'Utilizador';
+          const author = cm.author?.displayName || cm.author?.name || 'User';
           const date = cm.created ? cm.created.slice(0, 10) : '';
           mdLines.push(`### ${author} (${date})`);
           mdLines.push(String(cm.body || '').trim());
@@ -2033,13 +2033,13 @@ async function main() {
       }
 
       mdLines.push(
-        `## 5. Checklist Técnica de Implementação (Definition of Done)`,
+        `## 5. Technical Implementation Checklist (Definition of Done)`,
         ``,
-        `- [ ] **Arquitetura & Design**: Alinhamento com a arquitetura do projeto e separação clara de responsabilidades.`,
-        `- [ ] **Contratos de Dados & APIs**: Validação de modelos de dados, inputs/outputs e tratamento consistente de erros.`,
-        `- [ ] **Testes**: Implementação e validação de testes unitários e de integração para os critérios de aceitação.`,
-        `- [ ] **Segurança & Boas Práticas**: Validação de permissões, sanitização de inputs e proteção de dados sensíveis.`,
-        `- [ ] **Revisão & Documentação**: Code review efetuado e documentação técnica atualizada.`
+        `- [ ] **Architecture & Design**: Alignment with project standards and clear separation of concerns.`,
+        `- [ ] **Data Contracts & APIs**: Schema validation, typed inputs/outputs, and consistent error handling.`,
+        `- [ ] **Testing**: Automated unit and integration tests covering acceptance criteria.`,
+        `- [ ] **Security & Guardrails**: Role authorization checks, input sanitization, and sensitive data masking.`,
+        `- [ ] **Code Review & Documentation**: Peer review completed and technical documentation updated.`
       );
 
       const markdown = mdLines.join('\n') + '\n';
@@ -2047,7 +2047,7 @@ async function main() {
       if (flags.output) {
         const outPath = path.resolve(flags.output);
         fs.writeFileSync(outPath, markdown, 'utf8');
-        console.log(`${c.green}✔ Especificação exportada com sucesso para:${c.reset} ${outPath}`);
+        console.log(`${c.green}✔ Specification successfully exported to:${c.reset} ${outPath}`);
       } else {
         console.log(markdown);
       }
@@ -2055,14 +2055,14 @@ async function main() {
     }
 
     default:
-      throw new Error(`Comando desconhecido: "${command}". Executa "node tools/jira-cli/jira.mjs help" para ver os comandos.`);
+      throw new Error(`Unknown command: "${command}". Run "./jira.mjs help" to see all available commands.`);
   }
 }
 
 // Run CLI if invoked directly
 if (process.argv[1] && path.resolve(process.argv[1]) === __filename) {
   main().catch((err) => {
-    console.error(`\n${c.red}${c.bold}✖ Erro:${c.reset} ${err.message}\n`);
+    console.error(`\n${c.red}${c.bold}✖ Error:${c.reset} ${err.message}\n`);
     process.exit(1);
   });
 }
